@@ -17,8 +17,9 @@ from sklearn.model_selection import GridSearchCV
 from numba import jit, cuda
 # to measure exec time
 from timeit import default_timer as timer
+import time
 
-def preparacaodados():
+def preparacaodados(lags):
     dados = pd.read_csv("Matriz_vazao_regress.csv", sep=';')    
     
     treino = dados.iloc[:260, 14:15].values
@@ -56,7 +57,7 @@ def RodarSVM(X_train, y_train, X_test, y_test):
     # usando gridsearch
     regressor_linear = svr = GridSearchCV(SVR(gamma='scale'),
                                 param_grid={
-                                   "kernel": ['rbf', 'linear', 'poly'],
+                                   "kernel": ['rbf', 'poly'],
                                    "degree":[1, 2, 3, 4, 5],
                                    "epsilon":[0.01,0.1,0.2,1],
                                    
@@ -88,14 +89,18 @@ def RodarSVM(X_train, y_train, X_test, y_test):
               % (mean, std * 2, params))
     print()
     
+def RodarModelos():
     
-for lags in range(1, 13):
-    print("Lag " + str(lags))
-    X_train, y_train, X_test, y_test = preparacaodados()
-    RodarSVM(X_train, y_train, X_test, y_test)
-
-def main():
-    # for lags in range(1,13):
-        
+    t0 = time.time()
+    for lags in range(1, 13):
+        print("Lag " + str(lags))
+        X_train, y_train, X_test, y_test = preparacaodados(lags)
         RodarSVM(X_train, y_train, X_test, y_test)
+        t1 = time.time() -t0   
+        print("tempo decorrido:" + str(t1))
+    t1 = time.time() -t0   
+    print("tempo decorrido total:" + str(t1))
+
         
+
+
