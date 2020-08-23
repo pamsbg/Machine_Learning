@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 
 import numpy as np
 from scipy.stats import pearsonr
-
+from sklearn import preprocessing
 from sklearn.model_selection import GridSearchCV
 from numba import jit, cuda
 # to measure exec time
@@ -23,7 +23,9 @@ def preparacaodados(lags):
     dados = pd.read_csv("Matriz_vazao_regress.csv", sep=';')    
     
     treino = dados.iloc[:260, 14:15].values
+    treino_escalados = preprocessing.scale(treino)
     teste = dados.iloc[261:346, 14:15].values
+    teste_escalados = preprocessing.scale(teste)
     validacao = dados.iloc[346:432, 14:15]
 
     y_predict=[]
@@ -53,19 +55,23 @@ def mycustomscorer(y_test, prediction):
 
 def RodarSVM(X_train, y_train, X_test, y_test):
         # usando SVR simples
-    # regressor_linear = SVR(kernel='rbf')
+    # regressor_linear = SVR(kernel='linear')
     # usando gridsearch
-    regressor_linear = svr = GridSearchCV(SVR(gamma='scale'),
+    Cs=np.arange(0.001,3,0.5).tolist()
+    gammas = np.arange(0.001,1,0.1).tolist()
+    regressor_linear = svr = GridSearchCV(SVR(),
                                 param_grid={
-                                   "kernel": ['rbf', 'poly'],
-                                   "degree":[1, 2, 3, 4, 5],
-                                   "epsilon":[0.01,0.1,0.2,1],
+                                    "kernel": ['linear'],
+                                    "C":Cs,
+                                    "gamma":gammas,
+                                    # "epsilon":[0.001,0.01,0.1,0.5,1],
                                    
-                                   })
+                                    }, verbose=1, n_jobs=(6), cv=10)
     print("Rodando Modelo")
     regressor_linear.fit(X_train, y_train)
     print("Criando Previsões")
     y_predict=regressor_linear.predict(X_test)
+    
     print("Calculando Pearson")
     r2 = pearsonr(y_test, y_predict)
     print("r2:" + str(r2))
