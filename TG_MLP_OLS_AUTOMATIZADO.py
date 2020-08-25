@@ -120,18 +120,20 @@ def GravaremTXT(output):
     
 def RodarMLP(X_train, y_train, X_test, y_test):
     print("Rodando Modelo")
-    mlp = MLPRegressor()
+    model = MLPRegressor(activation='tanh', alpha=0.05, batch_size=50, hidden_layer_sizes=(5,6,9), max_iter=1000, solver='adam')
+    
     # model = KerasRegressor(build_fn=CriarMLP, epochs=1000, batch_size=10, verbose=0)
-    hidden_layer = GerarHiddenLayers()
-    parameter_space = {
-    'hidden_layer_sizes': hidden_layer,
-    'activation': ['tanh', 'relu'],
-    'solver': ['sgd', 'adam'],
-    'alpha': [0.0001, 0.05],
-    'batch_size':[50],
-    'max_iter':[1000]    
-    }
-    model = GridSearchCV(mlp, parameter_space, n_jobs=6, cv=3, verbose=4)
+    # hidden_layer = GerarHiddenLayers()
+    # parameter_space = {
+    # 'hidden_layer_sizes': hidden_layer,
+    # 'activation': ['tanh', 'relu'],
+    # 'solver': ['sgd', 'adam'],
+    # 'alpha': [0.0001, 0.05],
+    # 'batch_size':[50],
+    # 'max_iter':[1000]    
+    # }
+    
+    # model = GridSearchCV(mlp, parameter_space, n_jobs=6, cv=3, verbose=1)
     print("Alinhando Modelo")
     model.fit(X_train, y_train)
     
@@ -140,18 +142,19 @@ def RodarMLP(X_train, y_train, X_test, y_test):
     # calculate Pearson's correlation
     
     mlp_r2_predict, _ = pearsonr(y_test, prediction)
+    print(str(mlp_r2_predict))
     GravaremTXT("r2_predict" + str(mlp_r2_predict))
     mlp_mse_predict = mean_squared_error(y_test, prediction)
     mlp_mae_predict = mean_absolute_error(y_test, prediction)
     # Best paramete set
-    print('Best parameters found:\n', model.best_params_)
-    GravaremTXT("Melhores Parâmetros: " + model.best_params_)
-    # All results
-    means = model.cv_results_['mean_test_score']
-    stds = model.cv_results_['std_test_score']
-    for mean, std, params in zip(means, stds, model.cv_results_['params']):
-        print("%0.3f (+/-%0.03f) for %r" % (mean, std * 2, params))
-        GravaremTXT("%0.3f (+/-%0.03f) for %r" % (mean, std * 2, params))
+    # print('Best parameters found:\n', model.best_params_)
+    # GravaremTXT("Melhores Parâmetros: " + str(model.best_params_))
+    # # All results
+    # means = model.cv_results_['mean_test_score']
+    # stds = model.cv_results_['std_test_score']
+    # for mean, std, params in zip(means, stds, model.cv_results_['params']):
+    #     # print("%0.3f (+/-%0.03f) for %r" % (mean, std * 2, params))
+    #     GravaremTXT("%0.3f (+/-%0.03f) for %r" % (mean, std * 2, params))
         
 def RodarModelos():
     
