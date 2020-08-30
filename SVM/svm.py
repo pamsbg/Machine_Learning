@@ -6,27 +6,37 @@ This is a temporary script file.
 """
 
 import pandas as pd
-from sklearn.metrics import make_scorer, r2_score, mean_squared_error
+from sklearn.metrics import make_scorer, r2_score, mean_squared_error, mean_absolute_error
 from sklearn.svm import SVR
 import matplotlib.pyplot as plt
-
+from sklearn import linear_model
 import numpy as np
 from scipy.stats import pearsonr
 from sklearn import preprocessing
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from numba import jit, cuda
 # to measure exec time
 from timeit import default_timer as timer
 import time
 
+# from sklearn.externals import joblib
+
+# def SalvarModelo(my_model):
+#     joblib.dump(my_model, "my_model.pkl") 
+#     # and later... 
+#     my_model_loaded = joblib.load("my_model.pkl")
+
+
+
 def preparacaodados(lags):
     dados = pd.read_csv("Matriz_vazao_regress.csv", sep=';')    
     dados_totais = dados.iloc[:, 14:15].values
-    dados_escalados = preprocessing.scale(dados_totais)
-    treino = dados.iloc[:260, 14:15].values
-    treino_escalados = preprocessing.scale(treino)
-    teste = dados.iloc[261:346, 14:15].values
-    teste_escalados = preprocessing.scale(teste)
+    scaler = preprocessing.StandardScaler()
+    dados_escalados = scaler.fit_transform(dados_totais)
+    treino = dados.iloc[:312, 14:15].values
+    treino_escalados = scaler.fit_transform(treino)
+    teste = dados.iloc[312:432, 14:15].values
+    teste_escalados = scaler.fit_transform(teste)
     validacao = dados.iloc[346:432, 14:15]
 
     y_predict=[]
@@ -40,7 +50,7 @@ def preparacaodados(lags):
     plt.legend(loc='upper left')
     plt.title('Dados passados em um período')
     plt.show()
-    return X_train, y_train,X_test,y_test, X_total,y_total
+    return X_train, y_train,X_test,y_test, X_total,y_total, scaler
 
 
 def prepare_data(data, lags):
@@ -55,33 +65,46 @@ def mycustomscorer(y_test, prediction):
     mycustomscorer, _ = pearsonr(y_test, prediction)
     return mycustomscorer
 
-def RodarSVMGridsearch(X_train, y_train, X_test, y_test,X_total,y_total):
+def RodarSVMGridsearch(X_train, y_train, X_test, y_test,X_total,y_total, scaler):
         # usando SVR simples
     # regressor_linear = SVR(kernel='linear')
     # usando gridsearch
     scorer = make_scorer(mean_squared_error, greater_is_better=False)
-    Cs=np.arange(1,10,0.1).tolist()
-    gammas = np.arange(0.001,3,0.01).tolist()
-    degrees = np.arange(0,3,1).tolist()
-    regressor_linear = svr = GridSearchCV(SVR(),
-                                param_grid={
-                                    "kernel": ['rbf'],
-                                    "C":Cs,
-                                    "gamma":[0.0001,0.001,0.01,0.1,1,1.5],
-                                    # 'degree':degrees,
-                                     "epsilon":[0.1,0.5,1],
+    # Cs=np.arange(0.1,10,0.1).tolist()
+    # gammas = np.arange(0.001,3,0.001).tolist()
+    # degrees = np.arange(0,3,1).tolist()
+    # epsilons = np.arange(0.001,1,0.00001)
+    # regressor_linear = svr = GridSearchCV(SVR(),
+    #                             param_grid={
+    #                                 "kernel": ['rbf', 'sigmoid'],
+    #                                  "C":Cs,
+    #                                 "gamma":gammas,
+    #                                 # 'degree':degrees,
+    #                                   "epsilon":[0.1, 0.0001,0.00001,0.1],
                                    
-                                    }, verbose=1, n_jobs=(6), cv=25, scoring=scorer)
+    #                                 }, verbose=1, n_jobs=(6), cv=25, scoring=scorer)
+    
+    
+    parameters = {
+         'kernel': ('linear', 'rbf','sigmoid'), 
+         'C': np.arange(1, 40,0.5).tolist(), 
+         'gamma': [0.1,0.0001,0.00001,0.1,1.5,1.0],
+         'epsilon':[0.1, 0.0001,0.00001,0.1]
+         }
+    regressor_linear=RandomizedSearchCV(SVR(), parameters, random_state=4, n_iter=100000, n_jobs=(6), scoring=scorer)
     print("Rodando Modelo")
     regressor_linear.fit(X_total, y_total)
     print("Criando Previsões")
     y_predict=regressor_linear.predict(X_test)
-    
+    y_test = scaler.inverse_transform(y_test)
+    y_predict = scaler.inverse_transform(y_predict)
     print("Calculando Pearson")
     pearson = pearsonr(y_test, y_predict)
     print("pearson:" + str(pearson))
     r2 = r2_score(y_test, y_predict)
     print("r2:" + str(r2))
+    mse= mean_squared_error(y_test,y_predict)
+    print("mse:" + str(mse))
     # print("Gerando Gráficos")
     
     # plt.scatter(X_test,y_test)
@@ -97,12 +120,12 @@ def RodarSVMGridsearch(X_train, y_train, X_test, y_test,X_total,y_total):
     print()
     means = regressor_linear.cv_results_['mean_test_score']
     stds = regressor_linear.cv_results_['std_test_score']
-    for mean, std, params in zip(means, stds, regressor_linear.cv_results_['params']):
-        print("%0.3f (+/-%0.03f) for %r"
-              % (mean, std * 2, params))
-    print()
+    # for mean, std, params in zip(means, stds, regressor_linear.cv_results_['params']):
+    #     print("%0.3f (+/-%0.03f) for %r"
+    #           % (mean, std * 2, params))
+    # print()
     
-def RodarSVM(X_train, y_train, X_test, y_test):
+def RodarSVM(X_train, y_train, X_test, y_test, scaler):
     # {'C': 1.5, 'epsilon': 0.1, 'gamma': 0.1, 'kernel': 'rbf'} r2 0.55
     
     # {'C': 1.5, 'epsilon': 0.5, 'gamma': 1, 'kernel': 'rbf'}0,60
@@ -116,36 +139,65 @@ def RodarSVM(X_train, y_train, X_test, y_test):
     # {'C': 1, 'epsilon': 0.5, 'gamma': 0.0001, 'kernel': 'linear'}0,47
     # {'C': 0.1, 'epsilon': 0.5, 'gamma': 0.0001, 'kernel': 'linear'}0,47
     
-    regressor_linear = SVR(kernel='rbf', C=30.5, epsilon=0.001,gamma=1.5, verbose=1)
+    regressor_linear = SVR(kernel='rbf', C=1.5, epsilon=0.1,gamma=1.5, verbose=1)
     # regressor_linear = SVR(kernel='rbf', verbose=1)
     print("Rodando Modelo")
     regressor_linear.fit(X_train, y_train)
     print("Criando Previsões")
     y_predict=regressor_linear.predict(X_test)
-    
+    y_test = scaler.inverse_transform(y_test)
+    y_predict = scaler.inverse_transform(y_predict)
     print("Calculando Pearson")
     pearson = pearsonr(y_test, y_predict)
     print("pearson:" + str(pearson))
     r2 = r2_score(y_test, y_predict)
     print("r2:" + str(r2))
+    mse= mean_squared_error(y_test,y_predict)
+    print("mse:" + str(mse))
+    mae= mean_absolute_error(y_test,y_predict)
+    print("mae:" + str(mae))
     print("Gerando Gráficos")
     # plt.scatter()
     # plt.scatter(X_test[0],y_test[0])
     plt.plot(X_test, regressor_linear.predict(X_test), color='red')
     
+
+
+        
+
+def OLS(X_train, y_train, X_test, y_test, scaler):
+    
+    reg = linear_model.LinearRegression()
+    reg.fit(X_train, y_train)
+    reg_predict = reg.predict(X_test)
+    
+    y_test = scaler.inverse_transform(y_test)
+    reg_predict = scaler.inverse_transform(reg_predict)
+    print("Calculando Pearson")
+    pearson = pearsonr(y_test, reg_predict)
+    print("pearson:" + str(pearson))
+    r2 = r2_score(y_test, reg_predict)
+    print("r2:" + str(r2))
+    
+    mse= mean_squared_error(y_test,reg_predict)
+    print("mse:" + str(mse))
+    mae= mean_absolute_error(y_test,reg_predict)
+    print("mae:" + str(mae))
+
+
 def RodarModelos():
     
     t0 = time.time()
     for lags in range(1, 13):
         print("Lag " + str(lags))
-        X_train, y_train, X_test, y_test, X_total,y_total = preparacaodados(lags)
-        RodarSVMGridsearch(X_train, y_train, X_test, y_test,X_total,y_total)
-        # RodarSVM(X_train, y_train, X_test, y_test)
-        t1 = time.time() -t0   
-        print("tempo decorrido:" + str(t1))
-    t1 = time.time() -t0   
-    print("tempo decorrido total:" + str(t1))
-
-        
-
-
+        X_train, y_train, X_test, y_test, X_total,y_total, scaler = preparacaodados(lags)
+        RodarSVMGridsearch(X_train, y_train, X_test, y_test,X_total,y_total, scaler)
+        # print("SVM")
+        # RodarSVM(X_train, y_train, X_test, y_test, scaler)
+        # RodarLibSVM(X_train, y_train, X_test, y_test)
+        # print("OLS")
+        # OLS(X_train, y_train, X_test, y_test, scaler)
+        # t1 = time.time() -t0   
+        # print("tempo decorrido:" + str(t1))
+    # t1 = time.time() - t0   
+    # print("tempo decorrido total:" + str(t1))
