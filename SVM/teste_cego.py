@@ -1,5 +1,12 @@
 # -*- coding: utf-8 -*-
 """
+Created on Sun Aug 30 20:00:05 2020
+
+@author: pamsb
+"""
+
+# -*- coding: utf-8 -*-
+"""
 Spyder Editor
 
 This is a temporary script file.
@@ -14,7 +21,7 @@ import numpy as np
 from scipy.stats import pearsonr
 from sklearn import preprocessing
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
-from numba import jit, cuda
+
 # to measure exec time
 from timeit import default_timer as timer
 import time
@@ -26,18 +33,44 @@ import time
 #     # and later... 
 #     my_model_loaded = joblib.load("my_model.pkl")
 
+def ReamostrarDados(array):
+        matriz = []
+        
+        
+        dia = 1
+        diainicio =0
+        diasdecorridos=24
+        # tamanhoarray=(array.size//24)
+        # matriz = np.zeros(int(tamanhoarray)
+        for d in range(0,1460):
+            subset = array[diainicio:diasdecorridos]
+            soma=0
+            contador=0
+            diainicio=diainicio+24
+            diasdecorridos=diasdecorridos+24
+            for valor in subset:
+                contador = contador +1
+                soma = soma + (valor)
+                media = soma/contador           
+            
+            matriz.append(media)            
+            
 
+            
+        return matriz
 
 def preparacaodados(lags):
-    dados = pd.read_csv("Matriz_vazao_regress.csv", sep=';')    
-    dados_totais = dados.iloc[:, 14:15].values
+    treino = pd.read_csv("TrainData_Blind.txt")    
+    treino = treino.to_numpy()
+    matriz = ReamostrarDados(treino)
+    teste = pd.read_csv("TestData_Blind.txt")    
     scaler = preprocessing.StandardScaler()
-    dados_escalados = scaler.fit_transform(dados_totais)
-    treino = dados.iloc[:312, 14:15].values
+    
+    
     treino_escalados = scaler.fit_transform(treino)
-    teste = dados.iloc[312:432, 14:15].values
+    
     teste_escalados = scaler.fit_transform(teste)
-    validacao = dados.iloc[346:432, 14:15]
+    
 
     y_predict=[]
     X_total,y_total = prepare_data(dados_escalados,lags)
