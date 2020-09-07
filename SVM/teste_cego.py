@@ -34,25 +34,43 @@ import time
 #     my_model_loaded = joblib.load("my_model.pkl")
 
 def ReamostrarDados(array):
+
         matriz = []
-        
+        lst = []
         
         dia = 1
         diainicio =0
         diasdecorridos=24
-        # tamanhoarray=(array.size//24)
-        # matriz = np.zeros(int(tamanhoarray)
-        for d in range(0,1460):
-            subset = array[diainicio:diasdecorridos]
+        qtddias=int(array.size/24)
+        print("quantidadedias=" + str(qtddias))
+        for d in range(0,qtddias):
+            # subset = treino[int(diainicio):int(diasdecorridos)]
+            subset = array[int(diainicio):int(diasdecorridos)]
+            print("diainicio", diainicio)
+            print("diadecorrido",diasdecorridos)
+            print("dia",d)
+             
             soma=0
             contador=0
             diainicio=diainicio+24
             diasdecorridos=diasdecorridos+24
             for valor in subset:
                 contador = contador +1
-                soma = soma + (valor)
+                lst.append(valor)
+                print("valor",valor)
+                success = False
+                while not success:
+                    try:
+                        valor = float(valor)
+                        
+                        success = True
+                    except:
+                        valor = media
+                        pass
+                
+                soma = soma + valor
                 media = soma/contador           
-            
+            d=d+24
             matriz.append(media)            
             
 
@@ -62,8 +80,10 @@ def ReamostrarDados(array):
 def preparacaodados(lags):
     treino = pd.read_csv("TrainData_Blind.txt")    
     treino = treino.to_numpy()
-    matriz = ReamostrarDados(treino)
+    treino = ReamostrarDados(treino)
     teste = pd.read_csv("TestData_Blind.txt")    
+    teste = teste.to_numpy()
+    teste = ReamostrarDados(teste)
     scaler = preprocessing.StandardScaler()
     
     
