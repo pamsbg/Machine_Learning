@@ -19,12 +19,17 @@ import matplotlib.pyplot as plt
 from sklearn import linear_model
 import numpy as np
 from scipy.stats import pearsonr
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, LSTM
+from scikeras.wrappers import KerasRegressor
 from sklearn import preprocessing
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
-
+from sklearn.neural_network import MLPRegressor
+from sklearn.model_selection import cross_val_score, TimeSeriesSplit, cross_val_predict, GridSearchCV
 # to measure exec time
 from timeit import default_timer as timer
 import time
+import seaborn as sns
 
 # from sklearn.externals import joblib
 
@@ -35,20 +40,22 @@ import time
 
 def ReamostrarDados(array):
 
-        matriz = []
+        matriz=[]
+        dias=[]
         lst = []
         
         dia = 1
         diainicio =0
         diasdecorridos=24
         qtddias=int(array.size/24)
+        
         print("quantidadedias=" + str(qtddias))
         for d in range(0,qtddias):
             # subset = treino[int(diainicio):int(diasdecorridos)]
             subset = array[int(diainicio):int(diasdecorridos)]
-            print("diainicio", diainicio)
-            print("diadecorrido",diasdecorridos)
-            print("dia",d)
+            # print("diainicio", diainicio)
+            # print("diadecorrido",diasdecorridos)
+            # print("dia",d)
              
             soma=0
             contador=0
@@ -57,7 +64,7 @@ def ReamostrarDados(array):
             for valor in subset:
                 contador = contador +1
                 lst.append(valor)
-                print("valor",valor)
+                # print("valor",valor)
                 success = False
                 while not success:
                     try:
@@ -69,21 +76,35 @@ def ReamostrarDados(array):
                         pass
                 
                 soma = soma + valor
-                media = soma/contador           
+                media = soma/contador   
+            dias.append(d)
             d=d+24
+            
+            
             matriz.append(media)            
             
 
-            
-        return matriz
+        matriznova = np.stack((dias,matriz), axis=1)    
+        return matriznova
 
 def preparacaodados(lags):
-    treino = pd.read_csv("TrainData_Blind.txt")    
-    treino = treino.to_numpy()
-    treino = ReamostrarDados(treino)
-    teste = pd.read_csv("TestData_Blind.txt")    
-    teste = teste.to_numpy()
-    teste = ReamostrarDados(teste)
+    datatreino = pd.read_csv("TrainData_Blind.txt")    
+    # datatreino = datatreino.to_numpy()
+    # datatreino = ReamostrarDados(datatreino)
+    datateste = pd.read_csv("TestData_Blind.txt")    
+    # datateste = datateste.to_numpy()
+    # datateste = ReamostrarDados(datateste)
+    
+    
+    
+    # conversão para dataframe para escalar melhor e usar iloc
+    treino = datatreino
+    
+    
+    
+    teste=datateste
+    
+    
     scaler = preprocessing.StandardScaler()
     
     
@@ -93,7 +114,7 @@ def preparacaodados(lags):
     
 
     y_predict=[]
-    X_total,y_total = prepare_data(dados_escalados,lags)
+    # X_total,y_total = prepare_data(dados_escalados,lags)
     X_train,y_train = prepare_data(treino_escalados,lags)
     X_test,y_test = prepare_data(teste_escalados,lags)
     y_true = y_test
@@ -103,7 +124,7 @@ def preparacaodados(lags):
     plt.legend(loc='upper left')
     plt.title('Dados passados em um período')
     plt.show()
-    return X_train, y_train,X_test,y_test, X_total,y_total, scaler
+    return X_train, y_train,X_test,y_test, scaler
 
 
 def prepare_data(data, lags):
@@ -215,8 +236,79 @@ def RodarSVM(X_train, y_train, X_test, y_test, scaler):
     plt.plot(X_test, regressor_linear.predict(X_test), color='red')
     
 
+def RodarMLP(X_train, y_train, X_test, y_test, scaler, lags):
+    print("Rodando Modelo")
+    # mlp = MLPRegressor()
+    # model = MLPRegressor(activation='relu', alpha=0.001, batch_size=50, hidden_layer_sizes=(8,9,2), max_iter=1000, solver='adam')
+    scorer = make_scorer(mean_squared_error, greater_is_better=False)
+    model = KerasRegressor(build_fn=CriarMLP(lags), epochs=1000, batch_size=10, verbose=1)
+    # hidden_layer = GerarHiddenLayers()
+    # parameter_space = {
+    # 'hidden_layer_sizes': hidden_layer,
+    # 'activation': ['tanh', 'relu','softplus'],
+    # 'solver': ['sgd', 'adam'],
+    # 'alpha': [0.0001, 0.05,0.1, 0.01],
+    # 'batch_size':[50],
+    # 'max_iter':[1000]    
+    # }
+    
+    # model = GridSearchCV(mlp, parameter_space, n_jobs=6, cv=3, verbose=1, scoring=scorer, epochs=2000)
+    print("Alinhando Modelo")
+    model.fit(X_train, y_train)
+    print("Prevendo para dados de teste")
+    y_predict = model.predict(X_test)
+    
+    y_test = scaler.inverse_transform(y_test)
+    y_predict = scaler.inverse_transform(y_predict)
 
+    # calculate Pearson's correlation
+    
+    print("Calculando Pearson")
+    pearson = pearsonr(y_test, y_predict)
+    print("pearson:" + str(pearson))
+    r2 = r2_score(y_test, y_predict)
+    print("r2:" + str(r2))
+    mlp_mse_predict = mean_squared_error(y_test, y_predict)
+    mlp_mae_predict = mean_absolute_error(y_test, y_predict)
+    # Best paramete set
+    # print('Best parameters found:\n', model.best_params_)
+    # GravaremTXT("Melhores Parâmetros: " + str(model.best_params_))
+    # All results
+    # means = model.cv_results_['mean_test_score']
+    # stds = model.cv_results_['std_test_score']
+    # for mean, std, params in zip(means, stds, model.cv_results_['params']):
+        # print("%0.3f (+/-%0.03f) for %r" % (mean, std * 2, params))
+        # GravaremTXT("%0.3f (+/-%0.03f) for %r" % (mean, std * 2, params))
         
+        
+def GerarHiddenLayers():
+
+    layers = []
+    X=np.arange(1,10,1).tolist()
+    Y=np.arange(1,10,1).tolist()
+    Z=np.arange(1,10,1).tolist()
+    
+    for j in X:
+        for k in Y:
+            for l in Z:              
+                layer = tuple((j,k,l))
+                
+                layers.append(layer)
+    return layers              
+                    
+def CriarMLP(lags):
+    #create model  
+    model = Sequential()
+    model.add(Dense(32,input_dim=lags, activation='tanh'))
+    model.add(Dense(16, input_dim=lags, activation='tanh'))
+    model.add(Dense(16, input_dim=lags, activation='tanh'))
+    model.add(Dense(1, input_dim=lags))
+    model.compile(loss='mean_squared_error', optimizer='adam')
+    return model
+
+
+
+
 
 def OLS(X_train, y_train, X_test, y_test, scaler):
     
@@ -241,15 +333,17 @@ def OLS(X_train, y_train, X_test, y_test, scaler):
 def RodarModelos():
     
     t0 = time.time()
-    for lags in range(1, 13):
+    for lags in range(6,7):
+        lags = 7
         print("Lag " + str(lags))
-        X_train, y_train, X_test, y_test, X_total,y_total, scaler = preparacaodados(lags)
+        X_train, y_train, X_test, y_test, scaler = preparacaodados(lags)
         # RodarSVMGridsearch(X_train, y_train, X_test, y_test,X_total,y_total, scaler)
         # print("SVM")
-        RodarSVM(X_train, y_train, X_test, y_test, scaler)
+        # RodarSVM(X_train, y_train, X_test, y_test, scaler)
         # RodarLibSVM(X_train, y_train, X_test, y_test)
         # print("OLS")
         # OLS(X_train, y_train, X_test, y_test, scaler)
+        RodarMLP(X_train, y_train, X_test, y_test, scaler, lags)
         # t1 = time.time() -t0   
         # print("tempo decorrido:" + str(t1))
     # t1 = time.time() - t0   
