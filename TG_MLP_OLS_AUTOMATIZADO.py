@@ -116,25 +116,34 @@ def GravaremTXT(output):
     file.write(output) 
     file.close() 
         
+
+def CriarMLP(lags):
+    #create model  
+    model = Sequential()
+    model.add(Dense(1,input_dim=lags, activation='relu'))
+    model.add(Dense(5, input_dim=lags, activation='relu'))
+    model.add(Dense(5, input_dim=lags, activation='relu'))
+    model.add(Dense(1, input_dim=lags))
+    model.compile(loss='mean_squared_error', optimizer='adam')
+    return model
     
-    
-def RodarMLP(X_train, y_train, X_test, y_test):
+def RodarMLP(X_train, y_train, X_test, y_test, lags):
     print("Rodando Modelo")
     mlp = MLPRegressor()
-    # model = MLPRegressor(activation='relu', alpha=0.001, batch_size=50, hidden_layer_sizes=(8,9,2), max_iter=1000, solver='adam')
+    model = MLPRegressor(activation='relu', alpha=0.001, batch_size=50, hidden_layer_sizes=(8,9,2), max_iter=1000, solver='adam')
     scorer = make_scorer(mean_squared_error, greater_is_better=False)
-    # model = KerasRegressor(build_fn=CriarMLP, epochs=1000, batch_size=10, verbose=0)
-    hidden_layer = GerarHiddenLayers()
-    parameter_space = {
-    'hidden_layer_sizes': hidden_layer,
-    'activation': ['tanh', 'relu','softplus'],
-    'solver': ['sgd', 'adam'],
-    'alpha': [0.0001, 0.05,0.1, 0.01],
-    'batch_size':[50],
-    'max_iter':[1000]    
-    }
+    # model = KerasRegressor(build_fn=CriarMLP(lags), epochs=1000, batch_size=10, verbose=1)
+    # hidden_layer = GerarHiddenLayers()
+    # parameter_space = {
+    # 'hidden_layer_sizes': hidden_layer,
+    # 'activation': ['tanh', 'relu','softplus'],
+    # 'solver': ['sgd', 'adam'],
+    # 'alpha': [0.0001, 0.05,0.1, 0.01],
+    # 'batch_size':[50],
+    # 'max_iter':[1000]    
+    # }
     
-    model = GridSearchCV(mlp, parameter_space, n_jobs=6, cv=3, verbose=1, scoring=scorer)
+    # model = GridSearchCV(mlp, parameter_space, n_jobs=6, cv=3, verbose=1, scoring=scorer)
     print("Alinhando Modelo")
     model.fit(X_train, y_train)
     
@@ -150,11 +159,11 @@ def RodarMLP(X_train, y_train, X_test, y_test):
     mlp_mse_predict = mean_squared_error(y_test, y_predict)
     mlp_mae_predict = mean_absolute_error(y_test, y_predict)
     # Best paramete set
-    print('Best parameters found:\n', model.best_params_)
+    # print('Best parameters found:\n', model.best_params_)
     # GravaremTXT("Melhores Parâmetros: " + str(model.best_params_))
     # All results
-    means = model.cv_results_['mean_test_score']
-    stds = model.cv_results_['std_test_score']
+    # means = model.cv_results_['mean_test_score']
+    # stds = model.cv_results_['std_test_score']
     # for mean, std, params in zip(means, stds, model.cv_results_['params']):
         # print("%0.3f (+/-%0.03f) for %r" % (mean, std * 2, params))
         # GravaremTXT("%0.3f (+/-%0.03f) for %r" % (mean, std * 2, params))
@@ -166,7 +175,7 @@ def RodarModelos():
         print("Lag " + str(lags))
         GravaremTXT("Lag" + str(lags))
         X_train, y_train, X_test, y_test = preparacaoDados(lags)
-        RodarMLP(X_train, y_train, X_test, y_test)
+        RodarMLP(X_train, y_train, X_test, y_test, lags)
         t1 = time.time() -t0   
         print("tempo decorrido:" + str(t1))
     t1 = time.time() -t0   

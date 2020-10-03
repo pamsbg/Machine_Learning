@@ -88,10 +88,15 @@ def ReamostrarDados(array):
         return matriznova
 
 def preparacaodados(lags):
-    datatreino = pd.read_csv("TrainData_Blind.txt")    
+    # datatreino = pd.read_csv("TrainData_Blind.txt")    
+    dateparse=lambda dates: pd.datetime.strptime(dates, '%Y-%m')
+    df = pd.read_csv('Matriz_vazao_regress - Copia.csv', sep=';', parse_dates=['Month'], index_col='Month', date_parser =dateparse)
+    
+    datatreino=df.iloc[0:300,13:14]
+    datateste=df.iloc[300:432,13:14]
     # datatreino = datatreino.to_numpy()
     # datatreino = ReamostrarDados(datatreino)
-    datateste = pd.read_csv("TestData_Blind.txt")    
+    # datateste = pd.read_csv("TestData_Blind.txt")    
     # datateste = datateste.to_numpy()
     # datateste = ReamostrarDados(datateste)
     
@@ -238,21 +243,21 @@ def RodarSVM(X_train, y_train, X_test, y_test, scaler):
 
 def RodarMLP(X_train, y_train, X_test, y_test, scaler, lags):
     print("Rodando Modelo")
-    # mlp = MLPRegressor()
+    mlp = MLPRegressor()
     # model = MLPRegressor(activation='relu', alpha=0.001, batch_size=50, hidden_layer_sizes=(8,9,2), max_iter=1000, solver='adam')
     scorer = make_scorer(mean_squared_error, greater_is_better=False)
-    model = KerasRegressor(build_fn=CriarMLP(lags), epochs=1000, batch_size=10, verbose=1)
-    # hidden_layer = GerarHiddenLayers()
-    # parameter_space = {
-    # 'hidden_layer_sizes': hidden_layer,
-    # 'activation': ['tanh', 'relu','softplus'],
-    # 'solver': ['sgd', 'adam'],
-    # 'alpha': [0.0001, 0.05,0.1, 0.01],
-    # 'batch_size':[50],
-    # 'max_iter':[1000]    
-    # }
+    # model = KerasRegressor(build_fn=CriarMLP(lags), epochs=1000, batch_size=10, verbose=1)
+    hidden_layer = GerarHiddenLayers()
+    parameter_space = {
+    'hidden_layer_sizes': hidden_layer,
+    'activation': ['tanh', 'relu','softplus'],
+    'solver': ['sgd', 'adam'],
+    'alpha': [0.0001, 0.05,0.1, 0.01],
+    'batch_size':[50],
+    'max_iter':[1000]    
+    }
     
-    # model = GridSearchCV(mlp, parameter_space, n_jobs=6, cv=3, verbose=1, scoring=scorer, epochs=2000)
+    model = GridSearchCV(mlp, parameter_space, n_jobs=6, cv=3, verbose=1, scoring=scorer)
     print("Alinhando Modelo")
     model.fit(X_train, y_train)
     print("Prevendo para dados de teste")
