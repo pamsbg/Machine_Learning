@@ -35,18 +35,23 @@ def preparacaodados(lags):
     dateparse=lambda dates: pd.datetime.strptime(dates, '%Y-%m')
     dados = pd.read_csv('Matriz_vazao_regress.csv', sep=';', parse_dates=['Month'], index_col='Month', date_parser =dateparse)
     
-    dados_totais = dados.iloc[:, 13:14].values
-    
+    dados_totais = dados.iloc[:, 15:16].values
+    meses = dados.iloc[312:,1:2].values
+    anos = dados.iloc[312:,0:1].values
+    meses=meses.reshape(-1,1)
+    anos=anos.reshape(-1,1)
     tempo = np.array(dados.index[312:].tolist(),dtype='datetime64[D]')
     tempo=tempo.reshape(-1,1)
+    X_anos ,y_anos = prepare_data(anos,lags)
+    X_meses ,y_meses = prepare_data(meses,lags)
     X_tempo ,y_tempo = prepare_data(tempo,lags)
     scaler = preprocessing.StandardScaler()
     dados_escalados = scaler.fit_transform(dados_totais)
-    treino = dados.iloc[:312, 13:14].values
+    treino = dados.iloc[:312, 15:16].values
     treino_escalados = scaler.fit_transform(treino)
-    teste = dados.iloc[312:432, 13:14].values
+    teste = dados.iloc[312:432, 15:16].values
     teste_escalados = scaler.fit_transform(teste)
-    validacao = dados.iloc[346:432, 13:14]
+    validacao = dados.iloc[346:432, 15:16]
 
     
     X_total,y_total = prepare_data(dados_escalados,lags)
@@ -59,7 +64,7 @@ def preparacaodados(lags):
     plt.legend(loc='upper left')
     plt.title('Dados passados em um período')
     plt.show()
-    return X_train, y_train,X_test,y_test, X_total,y_total, scaler, X_tempo, y_tempo
+    return X_train, y_train,X_test,y_test, X_total,y_total, scaler, X_tempo, y_tempo, X_anos, y_anos, X_meses, y_meses
 
 
 def prepare_data(data, lags):
@@ -134,7 +139,7 @@ def RodarSVMGridsearch(X_train, y_train, X_test, y_test,X_total,y_total, scaler)
     #           % (mean, std * 2, params))
     # print()
     
-def RodarSVM(X_train, y_train, X_test, y_test, scaler, lags, X_tempo, y_tempo):
+def RodarSVM(X_train, y_train, X_test, y_test, scaler, lags, X_tempo, y_tempo, X_anos, y_anos, X_meses, y_meses, columns):
     # {'C': 1.5, 'epsilon': 0.1, 'gamma': 0.1, 'kernel': 'rbf'} r2 0.55
     
     # {'C': 1.5, 'epsilon': 0.5, 'gamma': 1, 'kernel': 'rbf'}0,60
@@ -176,8 +181,18 @@ def RodarSVM(X_train, y_train, X_test, y_test, scaler, lags, X_tempo, y_tempo):
     
     y_tempo = y_tempo.reshape(-1,1)
     df_y_tempo = pd.DataFrame(y_tempo, dtype='datetime64[D]')
+    df_y_tempo.columns=['Datas']
+    y_predict=df_y_predict.set_index(df_y_tempo.iloc[:,0],)
+    y_predict.columns=['Vazao']
     
-    y_predict=df_y_predict.set_index(df_y_tempo.iloc[:,0])
+    y_test=y_test.reshape(-1,1)
+    df_y_test=pd.DataFrame(y_test)
+    
+    y_tempo = y_tempo.reshape(-1,1)
+    df_y_tempo = pd.DataFrame(y_tempo, dtype='datetime64[D]')
+    df_y_tempo.columns=['Datas']
+    y_test=df_y_test.set_index(df_y_tempo.iloc[:,0],)
+    y_test.columns=['Vazao']
     
     X_test=X_test.reshape(-1,1)
     df_x_test=pd.DataFrame(X_test)
@@ -186,12 +201,97 @@ def RodarSVM(X_train, y_train, X_test, y_test, scaler, lags, X_tempo, y_tempo):
     df_x_tempo = pd.DataFrame(X_tempo, dtype='datetime64[D]')
     
     X_test=df_x_test.set_index(df_x_tempo.iloc[:,0])
- 
+    X_test.columns=['Vazao']
     
-    print("Gerando Gráficos")
-    # plt.scatter()
-    # plt.scatter(X_test[0],y_test[0])
+    y_meses = y_meses.reshape(-1,1)
+    df_meses=pd.DataFrame(y_meses)
+    df_meses.columns=['Meses']
+    columns_def=np.array(columns)
+    frameobservado=[df_meses,y_test]
+    filtermesesobservado=pd.DataFrame(np.hstack((frameobservado)), columns=columns_def)
     
+    obsfilterjaneiro =filtermesesobservado.loc[filtermesesobservado['Meses']==1]
+    obsfilterfevereiro =filtermesesobservado.loc[filtermesesobservado['Meses']==2]
+    obsfiltermarco =filtermesesobservado.loc[filtermesesobservado['Meses']==3]
+    obsfilterabril =filtermesesobservado.loc[filtermesesobservado['Meses']==4]
+    obsfiltermaio =filtermesesobservado.loc[filtermesesobservado['Meses']==5]
+    obsfilterjunho =filtermesesobservado.loc[filtermesesobservado['Meses']==6]
+    obsfilterjulho =filtermesesobservado.loc[filtermesesobservado['Meses']==7]
+    obsfilteragosto =filtermesesobservado.loc[filtermesesobservado['Meses']==8]
+    obsfiltersetembro =filtermesesobservado.loc[filtermesesobservado['Meses']==9]
+    obsfilteroutubro =filtermesesobservado.loc[filtermesesobservado['Meses']==10]
+    obsfilternovembro =filtermesesobservado.loc[filtermesesobservado['Meses']==11]
+    obsfilterdezembro =filtermesesobservado.loc[filtermesesobservado['Meses']==12]
+    
+    frame=[df_meses,y_predict]
+    filtermeses=pd.DataFrame(np.hstack((frame)), columns=columns_def)
+    filterjaneiro =filtermeses.loc[filtermeses['Meses']==1]
+    filterfevereiro =filtermeses.loc[filtermeses['Meses']==2]
+    filtermarco =filtermeses.loc[filtermeses['Meses']==3]
+    filterabril =filtermeses.loc[filtermeses['Meses']==4]
+    filtermaio =filtermeses.loc[filtermeses['Meses']==5]
+    filterjunho =filtermeses.loc[filtermeses['Meses']==6]
+    filterjulho =filtermeses.loc[filtermeses['Meses']==7]
+    filteragosto =filtermeses.loc[filtermeses['Meses']==8]
+    filtersetembro =filtermeses.loc[filtermeses['Meses']==9]
+    filteroutubro =filtermeses.loc[filtermeses['Meses']==10]
+    filternovembro =filtermeses.loc[filtermeses['Meses']==11]
+    filterdezembro =filtermeses.loc[filtermeses['Meses']==12]
+    
+    
+     
+    
+    r2jan = r2_score(obsfilterjaneiro['Vazao'], filterjaneiro['Vazao'])
+    r2fev = r2_score(obsfilterfevereiro['Vazao'], filterfevereiro['Vazao'])
+    r2mar = r2_score(obsfiltermarco['Vazao'], filtermarco['Vazao'])
+    r2abr = r2_score(obsfilterabril['Vazao'], filterabril['Vazao'])
+    r2mai = r2_score(obsfiltermaio['Vazao'], filtermaio['Vazao'])
+    r2jun = r2_score(obsfilterjunho['Vazao'], filterjunho['Vazao'])
+    r2jul = r2_score(obsfilterjulho['Vazao'], filterjulho['Vazao'])
+    r2ago = r2_score(obsfilteragosto['Vazao'], filteragosto['Vazao'])
+    r2set = r2_score(obsfiltersetembro['Vazao'], filtersetembro['Vazao'])
+    r2out = r2_score(obsfilteroutubro['Vazao'], filteroutubro['Vazao'])
+    r2nov = r2_score(obsfilternovembro['Vazao'], filternovembro['Vazao'])
+    r2dez = r2_score(obsfilterdezembro['Vazao'], filterdezembro['Vazao'])
+    
+    print("r2:" + str(r2))
+    mse= mean_squared_error(y_test,y_predict)
+    msejan = mean_squared_error(obsfilterjaneiro['Vazao'], filterjaneiro['Vazao'])
+    msefev = mean_squared_error(obsfilterfevereiro['Vazao'], filterfevereiro['Vazao'])
+    msemar = mean_squared_error(obsfiltermarco['Vazao'], filtermarco['Vazao'])
+    mseabr = mean_squared_error(obsfilterabril['Vazao'], filterabril['Vazao'])
+    msemai = mean_squared_error(obsfiltermaio['Vazao'], filtermaio['Vazao'])
+    msejun = mean_squared_error(obsfilterjunho['Vazao'], filterjunho['Vazao'])
+    msejul = mean_squared_error(obsfilterjulho['Vazao'], filterjulho['Vazao'])
+    mseago = mean_squared_error(obsfilteragosto['Vazao'], filteragosto['Vazao'])
+    mseset = mean_squared_error(obsfiltersetembro['Vazao'], filtersetembro['Vazao'])
+    mseout = mean_squared_error(obsfilteroutubro['Vazao'], filteroutubro['Vazao'])
+    msenov = mean_squared_error(obsfilternovembro['Vazao'], filternovembro['Vazao'])
+    msedez = mean_squared_error(obsfilterdezembro['Vazao'], filterdezembro['Vazao'])
+    print("mse:" + str(mse))
+    mae= mean_absolute_error(y_test,y_predict)
+    maejan = mean_absolute_error(obsfilterjaneiro['Vazao'], filterjaneiro['Vazao'])
+    maefev = mean_absolute_error(obsfilterfevereiro['Vazao'], filterfevereiro['Vazao'])
+    maemar = mean_absolute_error(obsfiltermarco['Vazao'], filtermarco['Vazao'])
+    maeabr = mean_absolute_error(obsfilterabril['Vazao'], filterabril['Vazao'])
+    maemai = mean_absolute_error(obsfiltermaio['Vazao'], filtermaio['Vazao'])
+    maejun = mean_absolute_error(obsfilterjunho['Vazao'], filterjunho['Vazao'])
+    maejul = mean_absolute_error(obsfilterjulho['Vazao'], filterjulho['Vazao'])
+    maeago = mean_absolute_error(obsfilteragosto['Vazao'], filteragosto['Vazao'])
+    maeset = mean_absolute_error(obsfiltersetembro['Vazao'], filtersetembro['Vazao'])
+    maeout = mean_absolute_error(obsfilteroutubro['Vazao'], filteroutubro['Vazao'])
+    maenov = mean_absolute_error(obsfilternovembro['Vazao'], filternovembro['Vazao'])
+    maedez = mean_absolute_error(obsfilterdezembro['Vazao'], filterdezembro['Vazao'])
+    print("mae:" + str(mae))
+    
+    
+    
+    
+  
+    
+    
+    
+    print("Gerando Gráficos")    
     plt.plot(X_test, label='Observado Lag ' + str(lags), color='orange')
     plt.plot(y_predict,label='Previsto', color='black')
     plt.legend(loc='best')
@@ -200,7 +300,7 @@ def RodarSVM(X_train, y_train, X_test, y_test, scaler, lags, X_tempo, y_tempo):
     plt.ylabel('Vazão', fontsize=14)    
     plt.savefig(('gráfico_svm_lag'+str(lags)+'.png'))
     plt.show()
-    return r2, mse, mae
+    return r2, mse, mae, r2jan ,    r2fev ,    r2mar ,    r2abr ,    r2mai ,    r2jun ,    r2jul ,    r2ago ,    r2set ,    r2out ,    r2nov ,    r2dez, msejan ,    msefev ,    msemar ,    mseabr ,    msemai ,    msejun ,    msejul ,    mseago ,    mseset ,    mseout ,    msenov ,    msedez, maejan ,    maefev ,    maemar ,    maeabr ,    maemai ,    maejun ,    maejul ,    maeago ,    maeset ,    maeout ,    maenov ,    maedez
 
         
 
@@ -309,16 +409,102 @@ def RodarModelos():
     maelistmlp=[]
     r2listmlp=[]
     mselistmlp=[]
+    r2listanualporlag=[]
+    r2listjan=[]
+    r2listfev=[]
+    r2listmar=[]
+    r2listabr=[]
+    r2listmai=[]
+    r2listjun=[]
+    r2listjul=[]
+    r2listago=[]
+    r2listset=[]
+    r2listout=[]
+    r2listnov=[]
+    r2listdez=[]
+    mselistjan=[]
+    mselistfev=[]
+    mselistmar=[]
+    mselistabr=[]
+    mselistmai=[]
+    mselistjun=[]
+    mselistjul=[]
+    mselistago=[]
+    mselistset=[]
+    mselistout=[]
+    mselistnov=[]
+    mselistdez=[]
+    maelistjan=[]
+    maelistfev=[]
+    maelistmar=[]
+    maelistabr=[]
+    maelistmai=[]
+    maelistjun=[]
+    maelistjul=[]
+    maelistago=[]
+    maelistset=[]
+    maelistout=[]
+    maelistnov=[]
+    maelistdez=[]
+    columns=['Meses', 'Vazao']
     for lags in range(1, 13):
         print("Lag " + str(lags))
-        X_train, y_train, X_test, y_test, X_total,y_total, scaler, X_tempo, y_tempo = preparacaodados(lags)
+        X_train, y_train, X_test, y_test, X_total,y_total, scaler, X_tempo, y_tempo, X_anos,y_anos,X_meses,y_meses = preparacaodados(lags)
         # RodarSVMGridsearch(X_train, y_train, X_test, y_test,X_total,y_total, scaler)
         # print("SVM")
-        r2, mse, mae=RodarSVM(X_train, y_train, X_test, y_test, scaler, lags, X_tempo, y_tempo)
+        # columns.append("Vazao")
+        r2, mse, mae, r2jan ,    r2fev ,    r2mar ,    r2abr ,    r2mai ,    r2jun ,    r2jul ,    r2ago ,    r2set ,    r2out ,    r2nov ,    r2dez, msejan ,    msefev ,    msemar ,    mseabr ,    msemai ,    msejun ,    msejul ,    mseago ,    mseset ,    mseout ,    msenov ,    msedez,maejan ,    maefev ,    maemar ,    maeabr ,    maemai ,    maejun ,    maejul ,    maeago ,    maeset ,    maeout ,    maenov ,    maedez =RodarSVM(X_train, y_train, X_test, y_test, scaler, lags, X_tempo, y_tempo, X_anos,y_anos,X_meses,y_meses, columns)
         mselist.append(mse)
         r2list.append(r2)
         maelist.append(mae)
-        
+        r2listanualporlag.append(r2jan)
+        r2listanualporlag.append(r2fev)
+        r2listanualporlag.append(r2mar)
+        r2listanualporlag.append(r2abr)
+        r2listanualporlag.append(r2mai)
+        r2listanualporlag.append(r2jun)
+        r2listanualporlag.append(r2jul)
+        r2listanualporlag.append(r2ago)
+        r2listanualporlag.append(r2set)
+        r2listanualporlag.append(r2out)
+        r2listanualporlag.append(r2nov)
+        r2listanualporlag.append(r2dez)
+        r2listjan.append(r2jan)
+        r2listfev.append(r2fev)
+        r2listmar.append(r2mar)
+        r2listabr.append(r2abr)
+        r2listmai.append(r2mai)
+        r2listjun.append(r2jun)
+        r2listjul.append(r2jul)
+        r2listago.append(r2ago)
+        r2listset.append(r2set)
+        r2listout.append(r2out)
+        r2listnov.append(r2nov)
+        r2listdez.append(r2dez)
+        mselistjan.append(msejan)
+        mselistfev.append(msefev)
+        mselistmar.append(msemar)
+        mselistabr.append(mseabr)
+        mselistmai.append(msemai)
+        mselistjun.append(msejun)
+        mselistjul.append(msejul)
+        mselistago.append(mseago)
+        mselistset.append(mseset)
+        mselistout.append(mseout)
+        mselistnov.append(msenov)
+        mselistdez.append(msedez)
+        maelistjan.append(maejan)
+        maelistfev.append(maefev)
+        maelistmar.append(maemar)
+        maelistabr.append(maeabr)
+        maelistmai.append(maemai)
+        maelistjun.append(maejun)
+        maelistjul.append(maejul)
+        maelistago.append(maeago)
+        maelistset.append(maeset)
+        maelistout.append(maeout)
+        maelistnov.append(maenov)
+        maelistdez.append(maedez)
         
         r2mlp, msemlp, maemlp=RodarMLP(X_train, y_train, X_test, y_test, scaler, lags)
         mselistmlp.append(msemlp)
@@ -335,7 +521,15 @@ def RodarModelos():
     x1 = np.arange(1,13)
     x2 = [x + 0.25 for x in x1]
     x3 = [x + 0.25 for x in x2]
-    plt.title("R-Squared")
+    
+    plt.title("R-Squared por mês")
+    plt.bar(x1, r2listanualporlag, width=0.25, label = 'R2 SVM', color = 'orange')   
+    plt.legend(loc='best')    
+    plt.xlabel('Mês', fontsize=14)    
+    plt.savefig(('gráfico_svm_resumor2_lag.png'))
+    plt.show()    
+    
+    plt.title("R-Squared por Lag")
     plt.bar(x1, r2list, width=0.25, label = 'R2 SVM', color = 'orange')
     plt.bar(x2, r2listols, width=0.25, label = 'R2 OLS', color = 'firebrick')
     plt.bar(x3, r2listmlp, width=0.25, label = 'R2 MLP', color = 'red')
