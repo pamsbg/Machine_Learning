@@ -9,10 +9,13 @@ import pandas as pd
 from sklearn.metrics import make_scorer, r2_score, mean_squared_error, mean_absolute_error
 from sklearn.svm import SVR
 import matplotlib.pyplot as plt
+from matplotlib.pylab import rcParams
+rcParams['figure.figsize']=15,6
 from sklearn import linear_model
 import numpy as np
 from scipy.stats import pearsonr
 from sklearn import preprocessing
+from sklearn.neural_network import MLPRegressor
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from numba import jit, cuda
 # to measure exec time
@@ -200,30 +203,7 @@ def RodarSVM(X_train, y_train, X_test, y_test, scaler, lags, X_tempo, y_tempo):
     return r2, mse, mae
 
         
-def CriarGraficos():
-        # Quantidade de vendas para o Produto A
-    valores_produto_A = [6,7,8,4,4]
-    
-    # Quantidade de vendas para o Produto B
-    valores_produto_B = [3,12,3,4.1,6]
-    
-    # Cria eixo x para produto A e produto B com uma separação de 0.25 entre as barras
-    x1 =  np.arange(len(valores_produto_A))
-    x2 = [x + 0.25 for x in x1]
-    
-    # Plota as barras
-    plt.bar(x1, valores_produto_A, width=0.25, label = 'Produto A', color = 'b')
-    plt.bar(x2, valores_produto_B, width=0.25, label = 'Produto B', color = 'y')
-    
-    # coloca o nome dos meses como label do eixo x
-    meses = ['Agosto','Setembro','Outubro','Novembro','Dezembro']
-    plt.xticks([x + 0.25 for x in range(len(valores_produto_A))], meses)
-    
-    # inseri uma legenda no gráfico
-    plt.legend()
-    
-    plt.title("Quantidade de Vendas")
-    plt.show()
+
     
 def OLS(X_train, y_train, X_test, y_test, scaler):
     
@@ -245,6 +225,76 @@ def OLS(X_train, y_train, X_test, y_test, scaler):
     print("mae:" + str(mae))
     return r2, mse,mae
 
+def RodarMLP(X_train, y_train, X_test, y_test, scaler, lags):
+    print("Rodando Modelo")
+    mlp = MLPRegressor()
+    model = MLPRegressor(activation='relu', alpha=0.001, batch_size=50, hidden_layer_sizes=(8,9,2), max_iter=1000, solver='adam')
+    scorer = make_scorer(mean_squared_error, greater_is_better=False)
+    # model = KerasRegressor(build_fn=CriarMLP(lags), epochs=1000, batch_size=10, verbose=1)
+    # hidden_layer = GerarHiddenLayers()
+    # parameter_space = {
+    # 'hidden_layer_sizes': hidden_layer,
+    # 'activation': ['tanh', 'relu','softplus'],
+    # 'solver': ['sgd', 'adam'],
+    # 'alpha': [0.0001, 0.05,0.1, 0.01],
+    # 'batch_size':[50],
+    # 'max_iter':[1000]    
+    # }
+    
+    # model = GridSearchCV(mlp, parameter_space, n_jobs=6, cv=3, verbose=1, scoring=scorer)
+    print("Alinhando Modelo")
+    model.fit(X_train, y_train)
+    print("Prevendo para dados de teste")
+    y_predict = model.predict(X_test)
+    
+    y_test = scaler.inverse_transform(y_test)
+    y_predict = scaler.inverse_transform(y_predict)
+
+    # calculate Pearson's correlation
+    
+    print("Calculando Pearson")
+    pearson = pearsonr(y_test, y_predict)
+    print("pearson:" + str(pearson))
+    r2 = r2_score(y_test, y_predict)
+    print("r2:" + str(r2))
+    mse = mean_squared_error(y_test, y_predict)
+    mae = mean_absolute_error(y_test, y_predict)
+    # Best paramete set
+    # print('Best parameters found:\n', model.best_params_)
+    # GravaremTXT("Melhores Parâmetros: " + str(model.best_params_))
+    # All results
+    # means = model.cv_results_['mean_test_score']
+    # stds = model.cv_results_['std_test_score']
+    # for mean, std, params in zip(means, stds, model.cv_results_['params']):
+        # print("%0.3f (+/-%0.03f) for %r" % (mean, std * 2, params))
+        # GravaremTXT("%0.3f (+/-%0.03f) for %r" % (mean, std * 2, params))
+        
+    return r2, mse,mae
+def GerarHiddenLayers():
+
+    layers = []
+    X=np.arange(1,10,1).tolist()
+    Y=np.arange(1,10,1).tolist()
+    Z=np.arange(1,10,1).tolist()
+    
+    for j in X:
+        for k in Y:
+            for l in Z:              
+                layer = tuple((j,k,l))
+                
+                layers.append(layer)
+    return layers              
+                    
+def CriarMLP(lags):
+    #create model  
+    model = Sequential()
+    model.add(Dense(32,input_dim=lags, activation='tanh'))
+    model.add(Dense(16, input_dim=lags, activation='tanh'))
+    model.add(Dense(16, input_dim=lags, activation='tanh'))
+    model.add(Dense(1, input_dim=lags))
+    model.compile(loss='mean_squared_error', optimizer='adam')
+    return model
+
 
 def RodarModelos():
     
@@ -256,7 +306,9 @@ def RodarModelos():
     maelistols=[]
     r2listols=[]
     mselistols=[]
-    
+    maelistmlp=[]
+    r2listmlp=[]
+    mselistmlp=[]
     for lags in range(1, 13):
         print("Lag " + str(lags))
         X_train, y_train, X_test, y_test, X_total,y_total, scaler, X_tempo, y_tempo = preparacaodados(lags)
@@ -266,7 +318,12 @@ def RodarModelos():
         mselist.append(mse)
         r2list.append(r2)
         maelist.append(mae)
-        # RodarLibSVM(X_train, y_train, X_test, y_test)
+        
+        
+        r2mlp, msemlp, maemlp=RodarMLP(X_train, y_train, X_test, y_test, scaler, lags)
+        mselistmlp.append(msemlp)
+        r2listmlp.append(r2mlp)
+        maelistmlp.append(maemlp)
         # print("OLS")
         r2ols, mseols, maeols= OLS(X_train, y_train, X_test, y_test, scaler)
         mselistols.append(mseols)
@@ -277,9 +334,11 @@ def RodarModelos():
     # r2concat = np.stack((r2list,r2listols), axis=1)    
     x1 = np.arange(1,13)
     x2 = [x + 0.25 for x in x1]
+    x3 = [x + 0.25 for x in x2]
     plt.title("R-Squared")
     plt.bar(x1, r2list, width=0.25, label = 'R2 SVM', color = 'orange')
     plt.bar(x2, r2listols, width=0.25, label = 'R2 OLS', color = 'firebrick')
+    plt.bar(x3, r2listmlp, width=0.25, label = 'R2 MLP', color = 'red')
     plt.legend(loc='best')    
     plt.xlabel('Lag', fontsize=14)    
     plt.savefig(('gráfico_svm_resumor2_lag.png'))
@@ -288,6 +347,7 @@ def RodarModelos():
     plt.title("Mean Squared Error ")
     plt.bar(x1, mselist, width=0.25, label = 'MSE SVM', color = 'lawngreen')
     plt.bar(x2, mselistols, width=0.25, label = 'MSE OLS', color = 'darkolivegreen')
+    plt.bar(x3, mselistmlp, width=0.25, label = 'MSE MLP', color = 'green')
     plt.legend(loc='best')    
     plt.xlabel('Lag', fontsize=14)    
     
@@ -296,7 +356,8 @@ def RodarModelos():
     
     plt.title("Mean Absolut Error")
     plt.bar(x1, maelist, width=0.25, label = 'MAE SVM', color = 'deepskyblue')
-    plt.bar(x2, maelistols, width=0.25, label = 'MAE OLS', color = 'mediumblue')
+    plt.bar(x2, maelistols, width=0.25, label = 'MAE OLS', color = 'cornflowerblue')
+    plt.bar(x3, maelistmlp, width=0.25, label = 'MAE MLP', color = 'mediumblue')
     plt.legend(loc='best')    
     plt.xlabel('Lag', fontsize=14)    
     plt.savefig(('gráfico_svm_resumomae_lag.png'))
