@@ -59,11 +59,11 @@ def preparacaodados(lags):
     X_test,y_test = prepare_data(teste_escalados,lags)
     y_true = y_test
     
-    plt.plot(y_test, label='Dados Originais de Vazão | y ou t+1', color ='blue')    
-    plt.plot(X_test, label='Dados Passados | X ou t', color='orange')
-    plt.legend(loc='upper left')
-    plt.title('Dados passados em um período')
-    plt.show()
+    # plt.plot(y_test, label='Dados Originais de Vazão | y ou t+1', color ='blue')    
+    # plt.plot(X_test, label='Dados Passados | X ou t', color='orange')
+    # plt.legend(loc='upper left')
+    # plt.title('Dados passados em um período')
+    # plt.show()
     return X_train, y_train,X_test,y_test, X_total,y_total, scaler, X_tempo, y_tempo, X_anos, y_anos, X_meses, y_meses
 
 
@@ -179,6 +179,30 @@ def RodarSVM(X_train, y_train, X_test, y_test, scaler, lags, X_tempo, y_tempo, X
     y_predict=y_predict.reshape(-1,1)
     df_y_predict=pd.DataFrame(y_predict)
     
+    print("Gerando Gráficos")  
+    # gerando grafico de scatter
+    fig = plt.figure()
+    fig.set_size_inches(10,10)
+    ax = fig.add_subplot(111)
+    X_test=X_test[:,0]
+    y_predict= y_predict[:,0]   
+    ax.plot(X_test,X_test, color='black')
+    ax.scatter(X_test,y_predict, color='orange')     
+    # ax.legend(loc='best')
+    ax.set(title='Resultados SVM Lag' + str(lags), ylabel='Previsto', xlabel='Observado')
+    fig.savefig('gráfico_svm_scatter_lag'+str(lags)+'.png')
+    fig.show()
+    
+          
+    plt.plot(X_test, label='Observado Lag ' + str(lags), color='orange')
+    plt.plot(y_predict,label='Previsto', color='black')
+    plt.legend(loc='best')
+    plt.title('Resultados')
+    plt.xlabel('Data', fontsize=14)
+    plt.ylabel('Vazão', fontsize=14)    
+    plt.savefig(('gráfico_svm_lag'+str(lags)+'.png'))
+    plt.show()
+    
     y_tempo = y_tempo.reshape(-1,1)
     df_y_tempo = pd.DataFrame(y_tempo, dtype='datetime64[D]')
     df_y_tempo.columns=['Datas']
@@ -194,7 +218,7 @@ def RodarSVM(X_train, y_train, X_test, y_test, scaler, lags, X_tempo, y_tempo, X
     y_test=df_y_test.set_index(df_y_tempo.iloc[:,0],)
     y_test.columns=['Vazao']
     
-    X_test=X_test.reshape(-1,1)
+    # X_test=X_test.reshape(-1,1)
     df_x_test=pd.DataFrame(X_test)
     
     X_tempo = X_tempo.reshape(-1,1)
@@ -237,10 +261,7 @@ def RodarSVM(X_train, y_train, X_test, y_test, scaler, lags, X_tempo, y_tempo, X
     filteroutubro =filtermeses.loc[filtermeses['Meses']==10]
     filternovembro =filtermeses.loc[filtermeses['Meses']==11]
     filterdezembro =filtermeses.loc[filtermeses['Meses']==12]
-    
-    
-     
-    
+        
     r2jan = r2_score(obsfilterjaneiro['Vazao'], filterjaneiro['Vazao'])
     r2fev = r2_score(obsfilterfevereiro['Vazao'], filterfevereiro['Vazao'])
     r2mar = r2_score(obsfiltermarco['Vazao'], filtermarco['Vazao'])
@@ -285,21 +306,6 @@ def RodarSVM(X_train, y_train, X_test, y_test, scaler, lags, X_tempo, y_tempo, X
     print("mae:" + str(mae))
     
     
-    
-    
-  
-    
-    
-    
-    print("Gerando Gráficos")    
-    plt.plot(X_test, label='Observado Lag ' + str(lags), color='orange')
-    plt.plot(y_predict,label='Previsto', color='black')
-    plt.legend(loc='best')
-    plt.title('Resultados')
-    plt.xlabel('Data', fontsize=14)
-    plt.ylabel('Vazão', fontsize=14)    
-    plt.savefig(('gráfico_svm_lag'+str(lags)+'.png'))
-    plt.show()
     return r2, mse, mae, r2jan ,    r2fev ,    r2mar ,    r2abr ,    r2mai ,    r2jun ,    r2jul ,    r2ago ,    r2set ,    r2out ,    r2nov ,    r2dez, msejan ,    msefev ,    msemar ,    mseabr ,    msemai ,    msejun ,    msejul ,    mseago ,    mseset ,    mseout ,    msenov ,    msedez, maejan ,    maefev ,    maemar ,    maeabr ,    maemai ,    maejun ,    maejul ,    maeago ,    maeset ,    maeout ,    maenov ,    maedez
 
         
@@ -449,6 +455,7 @@ def RodarModelos():
     columns=['Meses', 'Vazao']
     for lags in range(1, 13):
         print("Lag " + str(lags))
+        # lags=2
         X_train, y_train, X_test, y_test, X_total,y_total, scaler, X_tempo, y_tempo, X_anos,y_anos,X_meses,y_meses = preparacaodados(lags)
         # RodarSVMGridsearch(X_train, y_train, X_test, y_test,X_total,y_total, scaler)
         # print("SVM")
@@ -457,18 +464,6 @@ def RodarModelos():
         mselist.append(mse)
         r2list.append(r2)
         maelist.append(mae)
-        r2listanualporlag.append(r2jan)
-        r2listanualporlag.append(r2fev)
-        r2listanualporlag.append(r2mar)
-        r2listanualporlag.append(r2abr)
-        r2listanualporlag.append(r2mai)
-        r2listanualporlag.append(r2jun)
-        r2listanualporlag.append(r2jul)
-        r2listanualporlag.append(r2ago)
-        r2listanualporlag.append(r2set)
-        r2listanualporlag.append(r2out)
-        r2listanualporlag.append(r2nov)
-        r2listanualporlag.append(r2dez)
         r2listjan.append(r2jan)
         r2listfev.append(r2fev)
         r2listmar.append(r2mar)
@@ -518,23 +513,76 @@ def RodarModelos():
         # t1 = time.time() -t0   
         # print("tempo decorrido:" + str(t1))
     # r2concat = np.stack((r2list,r2listols), axis=1)    
+    with open('r2_lista.txt', 'w') as f:
+        for item in r2listanualporlag:
+            f.write("%s\n" % item)
     x1 = np.arange(1,13)
     x2 = [x + 0.25 for x in x1]
     x3 = [x + 0.25 for x in x2]
+    x4 = [x + 0.25 for x in x3]
+    x5 = [x + 0.25 for x in x4]
+    x6 = [x + 0.25 for x in x5]
+    x7 = [x + 0.25 for x in x6]
+    x8 = [x + 0.25 for x in x7]
+    x9 = [x + 0.25 for x in x8]
+    x10 = [x + 0.25 for x in x9]
+    x11 = [x + 0.25 for x in x9]
+    x12 = [x + 0.25 for x in x9]
     
     plt.title("R-Squared por mês")
-    plt.bar(x1, r2listanualporlag, width=0.25, label = 'R2 SVM', color = 'orange')   
+    plt.bar(x1, r2listjan, width=0.25, label = 'R2 SVM Jan', color = 'orange')   
+    plt.bar(x2, r2listfev, width=0.25, label = 'R2 SVM Fev', color = 'red')   
+    plt.bar(x3, r2listmar, width=0.25, label = 'R2 SVM Mar', color = 'salmon')   
+    
+    
     plt.legend(loc='best')    
-    plt.xlabel('Mês', fontsize=14)    
-    plt.savefig(('gráfico_svm_resumor2_lag.png'))
+    plt.xlabel('Lag', fontsize=14)    
+    plt.xticks(np.arange(0,13,1))
+    plt.savefig(('gráfico_svm_resumor2_1tri.png'))
+    
     plt.show()    
+    
+    plt.title("R-Squared por mês")
+    plt.bar(x1, r2listabr, width=0.25, label = 'R2 SVM Abr', color = 'orange')   
+    plt.bar(x2, r2listmai, width=0.25, label = 'R2 SVM Mai', color = 'red')   
+    plt.bar(x3, r2listjun, width=0.25, label = 'R2 SVM Jun', color = 'salmon')   
+  
+    plt.legend(loc='best')    
+    plt.xlabel('Lag', fontsize=14)    
+    plt.xticks(np.arange(0,13,1))
+    plt.savefig(('gráfico_svm_resumor2_2tri.png'))
+    plt.show()  
+    
+    
+    plt.title("R-Squared por mês")
+    plt.bar(x1, r2listjul, width=0.25, label = 'R2 SVM Jul', color = 'orange')   
+    plt.bar(x2, r2listago, width=0.25, label = 'R2 SVM Ago', color = 'red')   
+    plt.bar(x3, r2listset, width=0.25, label = 'R2 SVM Set', color = 'salmon')   
+    
+    plt.legend(loc='best')    
+    plt.xlabel('Lag', fontsize=14)    
+    plt.xticks(np.arange(0,13,1))
+    plt.savefig(('gráfico_svm_resumor2_3tri.png'))
+    plt.show() 
+    
+    
+    plt.title("R-Squared por mês")
+    plt.bar(x1, r2listout, width=0.25, label = 'R2 SVM Out', color = 'orange')   
+    plt.bar(x2, r2listnov, width=0.25, label = 'R2 SVM Nov', color = 'red')   
+    plt.bar(x3, r2listdez, width=0.25, label = 'R2 SVM Dez', color = 'salmon')   
+    plt.legend(loc='best') 
+    plt.xlabel('Lag', fontsize=14)    
+    plt.xticks(np.arange(0,13,1))
+    plt.savefig(('gráfico_svm_resumor2_4tri.png'))
+    plt.show() 
     
     plt.title("R-Squared por Lag")
     plt.bar(x1, r2list, width=0.25, label = 'R2 SVM', color = 'orange')
     plt.bar(x2, r2listols, width=0.25, label = 'R2 OLS', color = 'firebrick')
-    plt.bar(x3, r2listmlp, width=0.25, label = 'R2 MLP', color = 'red')
+    plt.bar(x3, r2listmlp, width=0.25, label = 'R2 MLP', color = 'red')    
     plt.legend(loc='best')    
-    plt.xlabel('Lag', fontsize=14)    
+    plt.xlabel('Lag', fontsize=14)       
+    plt.xticks(np.arange(0,13,1))
     plt.savefig(('gráfico_svm_resumor2_lag.png'))
     plt.show()    
     
@@ -544,17 +592,19 @@ def RodarModelos():
     plt.bar(x3, mselistmlp, width=0.25, label = 'MSE MLP', color = 'green')
     plt.legend(loc='best')    
     plt.xlabel('Lag', fontsize=14)    
-    
+    plt.xticks(np.arange(0,13,1))
     plt.savefig(('gráfico_svm_resumomse_lag.png'))
     plt.show()    
     
-    plt.title("Mean Absolut Error")
+    plt.title("Mean Absolute Error")
     plt.bar(x1, maelist, width=0.25, label = 'MAE SVM', color = 'deepskyblue')
     plt.bar(x2, maelistols, width=0.25, label = 'MAE OLS', color = 'cornflowerblue')
     plt.bar(x3, maelistmlp, width=0.25, label = 'MAE MLP', color = 'mediumblue')
     plt.legend(loc='best')    
     plt.xlabel('Lag', fontsize=14)    
+    plt.xticks(np.arange(0,13,1))
     plt.savefig(('gráfico_svm_resumomae_lag.png'))
+    
     plt.show()    
     # t1 = time.time() - t0   
     # print("tempo decorrido total:" + str(t1))
